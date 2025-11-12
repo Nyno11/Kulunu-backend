@@ -1,16 +1,15 @@
-var express = require('express');
+import express from 'express';
 var app = express.Router();
-var db = require('../config/db');
-var mailer = require('../config/mailer');
-var validation = require('../utils/validation');
-var jwthelper = require('../utils/jwt_helper');
-const axios = require('axios');
+import db from '../config/db.js';
+import mailer from '../config/mailer.js';
+import validation from '../utils/validation.js';
+import jwthelper from '../utils/jwt_helper.js';
+import axios from 'axios';
 
-const { OAuth2Client } = require('google-auth-library');
+import { OAuth2Client } from 'google-auth-library';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-const bcrypt = require("bcrypt");
-const { verifyAccessToken } = require('../utils/jwt_helper');
+import bcrypt from "bcrypt";
 
 
 
@@ -1114,4 +1113,4 @@ app.post('/verifyRecOTP', (req, res) => {
 
 
 
-module.exports = app;
+export default app;

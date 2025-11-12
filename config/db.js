@@ -1,6 +1,6 @@
 
 // const mysql = require('mysql2');
-const mysql = require('mysql2/promise');
+import mysql from 'mysql2/promise';
 
 // const con = mysql.createConnection({
 //     host: "localhost",
@@ -29,6 +29,6 @@ const pool = mysql.createPool({
     keepAliveInitialDelay: 0,
 });
 
-module.exports = pool;
+export default pool;
 
 

@@ -1,4 +1,4 @@
-var Joi = require('joi');
+import Joi from 'joi';
 
 
 
@@ -69,10 +69,10 @@ function resetPassCheck(reqbody) {
 function setupCheck(reqbody) {
     const schema = Joi.object({
 
-       dateofbirth: Joi.date().required(),
-       about: Joi.string().required(),
-       sportsid: Joi.required(),
-    
+        dateofbirth: Joi.date().required(),
+        about: Joi.string().required(),
+        sportsid: Joi.required(),
+
     }).options({ allowUnknown: true });
 
     return schema.validate(reqbody, {
@@ -80,4 +80,4 @@ function setupCheck(reqbody) {
     });
 }
 
-module.exports = { emailCheck, changePassCheck, loginCheck, registerCheck, resetPassCheck,setupCheck };
+export default { emailCheck, changePassCheck, loginCheck, registerCheck, resetPassCheck, setupCheck };
