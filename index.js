@@ -7,8 +7,11 @@ import express from 'express';
 import https from 'http';
 import fs from 'fs';
 import dotenv from 'dotenv';
+// const env = "production"; 
+const env = "development";
 
-dotenv.config({ path: `.env.${process.env.NODE_ENV}` })
+
+dotenv.config({ path: `.env.${env}` })
 
 var port = process.env.PORT || 8000;
 
@@ -42,16 +45,10 @@ var app = express();
 app.get('/', async (req, res) => {
 
 
-  var ip = "102.89.32.84";
-  var geo = geoip.lookup(ip);
-
-  console.log(geo);
 
 
-  console.log(req.ip);
-
-  const results = await database.query('select * from trial.users');
-  console.table(results.rows);
+  const results = await database.query('select * from users');
+  console.log(results);
 
 
   res.send('Now using https..');
@@ -86,7 +83,7 @@ function heartbeat() {
 app.use(cors());
 
 //This is to allow our api for parsing json
-app.use(express.json());
+app.use(express.json({ strict: false }));
 
 app.set('trust proxy', true);
 

@@ -7,7 +7,7 @@ export default {
             const secret = process.env.ACCESS_TOKEN_SECRET
             const options = {
                 expiresIn: '60d',
-                issuer: 'buzza.app',
+                issuer: 'Kulunu.app',
                 audience: userId.toString(),
             }
             try {
@@ -25,6 +25,7 @@ export default {
                     return resolve(token)
                 })
             } catch (err) {
+                console.log(err);
                 return reject(res.status(500).json({
 
                     success: false,
@@ -74,7 +75,7 @@ export default {
             const secret = process.env.REFRESH_TOKEN_SECRET
             const options = {
                 expiresIn: '1y',
-                issuer: 'buzza.app',
+                issuer: 'Kulunu.app',
                 audience: userId.toString(),
             }
             JWT.sign(payload, secret, options, async (err, token) => {
@@ -117,7 +118,7 @@ export default {
                 //     return resolve(token)
 
                 // })
-
+                return resolve(token)
             })
 
         })
@@ -177,7 +178,7 @@ export default {
             const secret = process.env.REFRESH_TOKEN_SECRET
             const options = {
                 expiresIn: 60 * 10,
-                issuer: 'buzza.app',
+                issuer: 'Kulunu.app',
                 audience: userId.toString(),
             }
             JWT.sign(payload, secret, options, async (err, token) => {

@@ -24,7 +24,7 @@ db.on('error', e => {
 
 app.post('/emailCheck', (req, res) => {
     try {
-        let sql = `SELECT email FROM trial.users WHERE email=$1`;
+        let sql = `SELECT email FROM users WHERE email=?`;
         db.query(sql, [req.body.email], (err, result) => {
             if (err) {
                 res.status(400).json({
@@ -66,22 +66,18 @@ app.get('/getUser', jwthelper.verifyAccessToken, async (req, res) => {
         // Validation of authentication using Joi Library
 
 
-        // const results = await db.query('select * from trial.users where email=$1 ', [req.body.email]);
+        // const results = await db.query('select * from users where email=? ', [req.body.email]);
         // console.table(results.rows);
 
         console.log(req.payload.aud);
 
 
         let sql = `select c.*, coalesce(p.id, s.id) as plan_id, coalesce(p.name, s.name) as plan_name
-       ,  jsonb_build_object('longitude',trial.ST_X(c.location),'latitude',trial.ST_Y(c.location),'country',(select jsonb_build_object('id',o.id,'name',o.name,'flagurl',o.flagurl,'currency',o.currency,'currency_symbol',o.currency_symbol,'rate',o.rate,'longitude',o.longitude,'latitude',o.latitude )from trial.countries o  where  o.id=c.country_id ),'region',(select jsonb_build_object('id',r.id,'name',r.name,'country_id',r.country_id,'longitude',r.longitude,'latitude',r.latitude )from trial.regions r  where  r.id=c.region_id ),'city',(select jsonb_build_object('id',city.id,'name',city.name,'country_id',city.country_id,'region_id',city.country_id,'longitude',city.longitude,'latitude',city.latitude )from trial.cities city  where  city.id=c.region_id ) ) as userlocation
-       ,array(select json_build_object('id',id,'name',name,'imageurl',imageurl,'variations',array(select jsonb_build_object('id',id,'name',name,'type',type,'setting',setting,'id_sport',id_sport)from trial.sport_variations v where v.id_sport=  b.id  ))from trial.sports b where b.id=  ANY(c.sports) )as usersports
-		from trial.users c 	
+       ,  jsonb_build_object('longitude',ST_X(c.location),'latitude',ST_Y(c.location),'country',(select jsonb_build_object('id',o.id,'name',o.name,'flagurl',o.flagurl,'currency',o.currency,'currency_symbol',o.currency_symbol,'rate',o.rate,'longitude',o.longitude,'latitude',o.latitude )from countries o  where  o.id=c.country_id ),'region',(select jsonb_build_object('id',r.id,'name',r.name,'country_id',r.country_id,'longitude',r.longitude,'latitude',r.latitude )from regions r  where  r.id=c.region_id ),'city',(select jsonb_build_object('id',city.id,'name',city.name,'country_id',city.country_id,'region_id',city.country_id,'longitude',city.longitude,'latitude',city.latitude )from cities city  where  city.id=c.region_id ) ) as userlocation
+       ,array(select json_build_object('id',id,'name',name,'imageurl',imageurl,'variations',array(select jsonb_build_object('id',id,'name',name,'type',type,'setting',setting,'id_sport',id_sport)from sport_variations v where v.id_sport=  b.id  ))from sports b where b.id=  ANY(c.sports) )as usersports
+		from users c 	
 		
-		left join
-             trial.personal_plans p  
-             on p.id = c.plan_id and c.usertype='Personal' left join
-             trial.organisation_plans s
-             on s.id = c.plan_id and c.usertype = 'Organisation' where c.id_user=$1`;
+		 where c.id_user=?`;
         db.query(sql, [req.payload.aud], async (err, result) => {
             if (err) {
                 res.status(400).send(err.message);
@@ -109,7 +105,7 @@ app.get('/getUser', jwthelper.verifyAccessToken, async (req, res) => {
                         about: result.rows[0]['about'],
                         ishost: result.rows[0]['ishost'],
                         sports: result.rows[0]['usersports'],
-                        usertype: result.rows[0]['usertype'],
+                        role: result.rows[0]['role'],
                         userlocation: result.rows[0]['userlocation'],
                         plan: {
                             id: result.rows[0]['plan_id'],
@@ -162,104 +158,79 @@ app.post('/login', async (req, res) => {
 
     const { error } = validation.loginCheck(req.body)
 
-    console.log(error)
+
     if (error) {
+        console.log(error)
         res.json({
             success: false,
             message: error.details[0].message
         })
     } else {
-        // const results = await db.query('select * from trial.users where email=$1 ', [req.body.email]);
+        // const results = await db.query('select * from users where email=? ', [req.body.email]);
         // console.table(results.rows);
 
         try {
 
-            let sql = `select c.*, coalesce(p.id, s.id) as plan_id, coalesce(p.name, s.name) as plan_name
-        ,  jsonb_build_object('longitude',trial.ST_X(c.location),'latitude',trial.ST_Y(c.location),'country',(select jsonb_build_object('id',o.id,'name',o.name,'flagurl',o.flagurl,'currency',o.currency,'currency_symbol',o.currency_symbol,'rate',o.rate,'longitude',o.longitude,'latitude',o.latitude )from trial.countries o  where  o.id=c.country_id ),'region',(select jsonb_build_object('id',r.id,'name',r.name,'country_id',r.country_id,'longitude',r.longitude,'latitude',r.latitude )from trial.regions r  where  r.id=c.region_id ),'city',(select jsonb_build_object('id',city.id,'name',city.name,'country_id',city.country_id,'region_id',city.country_id,'longitude',city.longitude,'latitude',city.latitude )from trial.cities city  where  city.id=c.region_id ) ) as userlocation
-        ,array(select json_build_object('id',id,'name',name,'imageurl',imageurl,'variations',array(select jsonb_build_object('id',id,'name',name,'type',type,'setting',setting,'id_sport',id_sport)from trial.sport_variations v where v.id_sport=  b.id  ))from trial.sports b where b.id=  ANY(c.sports) )as usersports
-		from trial.users c 	
-		
-		left join
-             trial.personal_plans p  
-             on p.id = c.plan_id and c.usertype='Personal' left join
-             trial.organisation_plans s
-             on s.id = c.plan_id and c.usertype = 'Organisation' where c.email=$1`;
-            db.query(sql, [req.body.email], async (err, result) => {
-                if (err) {
-                    res.status(400).send(err);
-                    console.log(err);
-                    // res.send(error);
-                    return
+
+            let sql = "SELECT * FROM users WHERE email=?";
+            const [rows, fields] = await db.query(sql, [req.body.email]);
+
+
+            if (rows.length > 0) {
+                console.log(rows[0]['password_hash']);
+                const validPassword = await bcrypt.compare(req.body.password, rows[0]['password_hash']);
+
+                if (!validPassword)
+                    return res.status(400).json({
+
+                        success: false,
+                        message: "Password is wrong"
+                    });
+
+
+                if (validPassword) {
+
+
+                    var token = await jwthelper.signAccessToken(rows[0]['id_user'], req, res);
+                    var refreshtoken = await jwthelper.signRefreshToken(rows[0]['id_user'], req, res);
+                    console.log(token);
+                    res.status(200).json({
+                        success: true,
+                        data: {
+                            id: rows[0]['id_user'],
+                            full_name: rows[0]['full_name'],
+                            email: rows[0]['email'],
+                            created_at: rows[0]['created_at'],
+                            role: rows[0]['role'],
+                            phone_number: rows[0]['phone_number'],
+                            token: token,
+                            refreshtoken: refreshtoken,
+                        },
+
+
+                        message: "Logged in successfully",
+
+                    });
 
                 }
-                console.log(result[0]);
-                if (result.rows.length > 0) {
-                    console.log(result.rows[0].password);
-                    const validPassword = await bcrypt.compare(req.body.password, result.rows[0].password);
-
-                    if (!validPassword)
-                        return res.status(400).json({
-
-                            success: false,
-                            message: "Password is wrong"
-                        });
-
-
-                    if (validPassword) {
-
-
-                        var token = await jwthelper.signAccessToken(result.rows[0]['id_user'], req, res);
-                        var refreshtoken = await jwthelper.signRefreshToken(result.rows[0]['id_user'], req, res);
-                        console.log(token);
-                        res.status(200).json({
-                            success: true,
-                            data: {
-                                id: result.rows[0]['id_user'],
-                                name: result.rows[0]['name'],
-                                email: result.rows[0]['email'],
-                                image: result.rows[0]['image'],
-                                handle: result.rows[0]['handle'],
-                                usercolor: result.rows[0]['usercolor'],
-                                about: result.rows[0]['about'],
-                                ishost: result.rows[0]['ishost'],
-                                sports: result.rows[0]['usersports'],
-                                usertype: result.rows[0]['usertype'],
-                                userlocation: result.rows[0]['userlocation'],
-                                plan: {
-                                    id: result.rows[0]['plan_id'],
-                                    name: result.rows[0]['plan_name'],
-                                },
-                                // about: result[0]['about'],
-
-                                // userimages: [result[0]['uimage_1'], result[0]['uimage_2'], result[0]['uimage_3'], result[0]['uimage_4']],
-                                token: token,
-                                refreshtoken: refreshtoken,
-                            },
-
-
-                            message: "Logged in successfully",
-
-                        });
-
-                    }
-                    else {
-                        console.log("sssss");
-                        res.status(400).json({
-                            success: false,
-                            message: "Wrong email or password!"
-                        });
-                    }
-
-
-                } else {
+                else {
                     console.log("sssss");
                     res.status(400).json({
                         success: false,
-                        message: "No user found!"
-                    })
+                        message: "Wrong email or password!"
+                    });
                 }
 
-            });
+
+            } else {
+                console.log("sssss");
+                res.status(400).json({
+                    success: false,
+                    message: "No user found!"
+                })
+            }
+
+
         } catch (err) {
             console.log(err);
             res.status(400).json({
@@ -278,17 +249,11 @@ app.post('/login', async (req, res) => {
 
 
 
-
-
-
-
-
-
 //Register User
 
 
 
-app.post('/register', (req, res) => {
+app.post('/register', async (req, res) => {
 
 
     // Validation of authentication using Joi Library
@@ -302,101 +267,59 @@ app.post('/register', (req, res) => {
     } else {
 
         try {
-            let sql = `SELECT email FROM trial.users WHERE email=$1`;
-            db.query(sql, [req.body.email], async (err, result) => {
-                if (err) {
-                    res.status(400).json({
-                        success: false,
-                        message: "Server Error Occured, Try Again"
-                    })
-                    return
-                }
-                if (result.rows.length) {
-                    res.status(400).json({
-                        success: false,
-                        message: "Email Exists, Kindly Login"
-                    })
-                } else {
+            let sql = "SELECT email FROM users WHERE email=?";
 
-                    let ip = req.headers['x-forwarded-for']?.split(',').shift() || req.ip || req.socket.remoteAddress;
-                    console.log(ip);
-                    var userlocation = await locator.getUserLocation("102.89.23.163");
-                    console.log(userlocation.country_code)
+            const [rows, fields] = await db.query(sql, [req.body.email]);
 
-                    let countryid = await db.query(`SELECT id FROM trial.countries WHERE iso2=$1`, [userlocation.country_code]);
-                    console.log(countryid['rows'][0]['id'])
-                    const salt = await bcrypt.genSalt(10);
-                    const password = await bcrypt.hash(req.body.password, salt);
-                    await mailer.sendEmailtoUser(req.body.email, "Hey there,welcome to Buzza", "Ready, Set, Game", "Happ to have you on board, wecome to Buzza").then((success) => {
+            console.log(rows); // rows is an array of matching records
 
-                        // if (success) {
-                        //     console.log('Email sent!');
-                        //     res.status(200).json({
-
-                        //         success: true,
-                        //         message: "Reset email sent successful",
-
-                        //     })
-
-                        // } else {
-                        //     res.status(400).json({
-                        //         success: false,
-                        //         message: "An error occured",
-                        //     })
-                        // }
-
-                    });
-                    let sql = "INSERT INTO trial.users (name,email,password,usertype,handle,country_id,region_id,latitude,longitude,location) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,trial.ST_MakePoint(" + userlocation.longitude + "," + userlocation.latitude + " ));";
-                    db.query(sql, [req.body.name, req.body.email, password, req.body.usertype, req.body.handle, userlocation.country_id, userlocation.region_id, userlocation.latitude, userlocation.longitude], (err, result) => {
-                        if (err) {
-                            res.status(400).json({
-                                success: false,
-                                message: err.message
-                            });
-                            return
-                        }
-
-                        sqlput = `SELECT c.*,    jsonb_build_object('longitude',trial.ST_X(c.location),'latitude',trial.ST_Y(c.location),'country',(select jsonb_build_object('id',o.id,'name',o.name,'flagurl',o.flagurl,'currency',o.currency,'currency_symbol',o.currency_symbol,'rate',o.rate,'longitude',o.longitude,'latitude',o.latitude )from trial.countries o  where  o.id=c.country_id ),'region',(select jsonb_build_object('id',r.id,'name',r.name,'country_id',r.country_id,'longitude',r.longitude,'latitude',r.latitude )from trial.regions r  where  r.id=c.region_id ),'city',(select jsonb_build_object('id',city.id,'name',city.name,'country_id',city.country_id,'region_id',city.country_id,'longitude',city.longitude,'latitude',city.latitude )from trial.cities city  where  city.id=c.region_id ) ) as userlocation
-                    FROM trial.users c WHERE email=$1`;
-                        db.query(sqlput, [req.body.email], async (err, result) => {
-
-                            if (err) {
-                                res.status(400).json({
-                                    success: false,
-                                    message: err.message
-                                });
-                                return
-                            }
-
-                            var token = await jwthelper.signAccessToken(result.rows[0]['id_user'], req, res);
-                            var refreshtoken = await jwthelper.signRefreshToken(result.rows[0]['id_user'], req, res);
-                            res.status(200).json({
-                                success: true,
-                                data: {
-                                    id: result.rows[0]['id_user'],
-                                    name: result.rows[0]['name'],
-                                    email: result.rows[0]['email'],
-                                    createdat: result.rows[0]['createdat'],
-                                    usertype: result.rows[0]['usertype'],
-                                    about: result.rows[0]['about'],
-                                    handle: result.rows[0]['handle'],
-                                    usercolor: result.rows[0]['usercolor'],
-                                    ishost: result.rows[0]['ishost'],
-                                    email: result.rows[0]['email'],
-                                    imageUrl: result.rows[0]['image_url'],
-                                    userlocation: result.rows[0]['userlocation'],
-                                    token: token,
-                                    refreshtoken: refreshtoken,
-                                },
-
-                            });
-                        });
+            if (rows.length > 0) {
+                // Email exists
+                return res.status(400).json({
+                    success: false,
+                    message: "Email Exists, Kindly Login"
+                });
+            } else {
 
 
-                    });
 
-                }
-            });
+                const salt = await bcrypt.genSalt(10);
+                const password = await bcrypt.hash(req.body.password, salt);
+                // await mailer.sendEmailtoUser(req.body.email, "Hey there,welcome to Kulunu", "Ready, Set, Game", "Happ to have you on board, wecome to Kulunu").then((success) => {
+
+
+
+                // });
+                let sqlinsert = "INSERT INTO users (full_name,email,password_hash,role) VALUES (?,?,?,?);";
+                const insert = await db.query(sqlinsert, [req.body.full_name, req.body.email, password, req.body.role]);
+
+                let getusersql = "SELECT * FROM users WHERE email=?";
+
+                const [getuserrows, getuserfields] = await db.query(getusersql, [req.body.email]);
+
+                console.log(getuserrows);
+                console.log(getuserrows[0]['id_user']);
+
+                var token = await jwthelper.signAccessToken(getuserrows[0]['id_user'], req, res);
+                var refreshtoken = await jwthelper.signRefreshToken(getuserrows[0]['id_user'], req, res);
+                res.status(200).json({
+                    success: true,
+                    data: {
+                        id: getuserrows[0]['id_user'],
+                        full_name: getuserrows[0]['full_name'],
+                        email: getuserrows[0]['email'],
+                        created_at: getuserrows[0]['created_at'],
+                        role: getuserrows[0]['role'],
+                        phone_number: getuserrows[0]['phone_number'],
+                        token: token,
+                        refreshtoken: refreshtoken,
+                    },
+
+                });
+
+
+            }
+
         } catch (err) {
             console.log(err);
             res.status(400).json({
@@ -428,7 +351,7 @@ app.post('/setupaccount', jwthelper.verifyAccessToken, async (req, res) => {
 
 
 
-            db.query('UPDATE trial.users SET about=$1,sports=$2,dateofbirth=$3,gender=$4 WHERE id_user=$5', [req.body.about, req.body.sportsid, req.body.dateofbirth, req.body.gender, req.payload.aud], (err, result) => {
+            db.query('UPDATE users SET about=?,sports=?,dateofbirth=?,gender=? WHERE id_user=?', [req.body.about, req.body.sportsid, req.body.dateofbirth, req.body.gender, req.payload.aud], (err, result) => {
                 if (err) {
                     res.status(400).json({
                         success: false,
@@ -437,15 +360,15 @@ app.post('/setupaccount', jwthelper.verifyAccessToken, async (req, res) => {
                 }
 
                 sqlput = `select c.*, coalesce(p.id, s.id) as plan_id, coalesce(p.name, s.name) as plan_name
-                            ,  jsonb_build_object('longitude',trial.ST_X(c.location),'latitude',trial.ST_Y(c.location),'country',(select jsonb_build_object('id',o.id,'name',o.name,'flagurl',o.flagurl,'currency',o.currency,'currency_symbol',o.currency_symbol,'rate',o.rate,'longitude',o.longitude,'latitude',o.latitude )from trial.countries o  where  o.id=c.country_id ),'region',(select jsonb_build_object('id',r.id,'name',r.name,'country_id',r.country_id,'longitude',r.longitude,'latitude',r.latitude )from trial.regions r  where  r.id=c.region_id ),'city',(select jsonb_build_object('id',city.id,'name',city.name,'country_id',city.country_id,'region_id',city.country_id,'longitude',city.longitude,'latitude',city.latitude )from trial.cities city  where  city.id=c.region_id ) ) as userlocation
-                            ,array(select json_build_object('id',id,'name',name,'imageurl',imageurl,'variations',array(select jsonb_build_object('id',id,'name',name,'type',type,'setting',setting,'id_sport',id_sport)from trial.sport_variations v where v.id_sport=  b.id  ))from trial.sports b where b.id=  ANY(c.sports) )as usersports
-                            from trial.users c 	
+                            ,  jsonb_build_object('longitude',ST_X(c.location),'latitude',ST_Y(c.location),'country',(select jsonb_build_object('id',o.id,'name',o.name,'flagurl',o.flagurl,'currency',o.currency,'currency_symbol',o.currency_symbol,'rate',o.rate,'longitude',o.longitude,'latitude',o.latitude )from countries o  where  o.id=c.country_id ),'region',(select jsonb_build_object('id',r.id,'name',r.name,'country_id',r.country_id,'longitude',r.longitude,'latitude',r.latitude )from regions r  where  r.id=c.region_id ),'city',(select jsonb_build_object('id',city.id,'name',city.name,'country_id',city.country_id,'region_id',city.country_id,'longitude',city.longitude,'latitude',city.latitude )from cities city  where  city.id=c.region_id ) ) as userlocation
+                            ,array(select json_build_object('id',id,'name',name,'imageurl',imageurl,'variations',array(select jsonb_build_object('id',id,'name',name,'type',type,'setting',setting,'id_sport',id_sport)from sport_variations v where v.id_sport=  b.id  ))from sports b where b.id=  ANY(c.sports) )as usersports
+                            from users c 	
                             
                             left join
-                                 trial.personal_plans p  
-                                 on p.id = c.plan_id and c.usertype='Personal' left join
-                                 trial.organisation_plans s
-                                 on s.id = c.plan_id and c.usertype = 'Organisation' where c.id_userl=$1`;
+                                 personal_plans p  
+                                 on p.id = c.plan_id and c.role='Personal' left join
+                                 organisation_plans s
+                                 on s.id = c.plan_id and c.role = 'Organisation' where c.id_userl=?`;
                 db.query(sqlput, [req.payload.aud], async (err, result) => {
 
                     if (err) {
@@ -470,7 +393,7 @@ app.post('/setupaccount', jwthelper.verifyAccessToken, async (req, res) => {
                             about: result.rows[0]['about'],
                             ishost: result.rows[0]['ishost'],
                             sports: result.rows[0]['usersports'],
-                            usertype: result.rows[0]['usertype'],
+                            role: result.rows[0]['role'],
                             userlocation: result.rows[0]['userlocation'],
                             plan: {
                                 id: result.rows[0]['plan_id'],
@@ -572,7 +495,7 @@ app.post('/changepass', jwthelper.verifyAccessToken, async (req, res) => {
         try {
             var s = req.payload;
             console.log(s.user.id_user)
-            db.query('SELECT password FROM trial.users WHERE id_user=$1', [s.user.id_user], async (err, result) => {
+            db.query('SELECT password FROM users WHERE id_user=?', [s.user.id_user], async (err, result) => {
                 if (err) {
                     res.status(400).json({
                         success: false,
@@ -603,7 +526,7 @@ app.post('/changepass', jwthelper.verifyAccessToken, async (req, res) => {
                             const salt = await bcrypt.genSalt(10);
                             const password = await bcrypt.hash(req.body.newpassword, salt);
 
-                            db.query('UPDATE trial.users SET password=$1 WHERE id_user=$2', [password, s['user']['id_user']], async (err, result) => {
+                            db.query('UPDATE users SET password=? WHERE id_user=?', [password, s['user']['id_user']], async (err, result) => {
                                 if (err) {
                                     res.status(400).json({
                                         success: false,
@@ -682,7 +605,7 @@ app.post('/resetpassword', async (req, res) => {
                     await jwthelper.verifyPasswordToken(req.body.token, req, res).then(async (userId) => {
                         console.log(userId);
 
-                        db.query('UPDATE trial.users SET password=$1 WHERE id_user=$2', [password, userId], async (err, result) => {
+                        db.query('UPDATE users SET password=? WHERE id_user=?', [password, userId], async (err, result) => {
                             if (err) {
                                 res.status(400).json({
                                     success: false,
@@ -742,7 +665,7 @@ app.post('/sendresetemail', (req, res) => {
 
 
 
-        db.query('SELECT id_user FROM trial.users WHERE email=$1', [email], async (err, result) => {
+        db.query('SELECT id_user FROM users WHERE email=?', [email], async (err, result) => {
             console.log(result.rows[0].id_user)
 
             if (err) {
@@ -828,13 +751,13 @@ app.post('/googleAuthLogin', async (req, res) => {
             var given_name = payload["given_name"];
             var family_name = payload["family_name"];
             var locale = payload["locale"];
-            var usertype = req.body.usertype;
+            var role = req.body.role;
 
 
             var email = payload["email"];
             //SIGN IN
 
-            let sql = `select * from trial.users where email=$1`;
+            let sql = `select * from users where email=?`;
             db.query(sql, [email], async (err, result) => {
                 if (err) {
                     res.status(400).send(err);
@@ -861,7 +784,7 @@ app.post('/googleAuthLogin', async (req, res) => {
                             name: result.rows[0]['name'],
                             email: result.rows[0]['email'],
                             createdat: result.rows[0]['createdat'],
-                            usertype: result.rows[0]['usertype'],
+                            role: result.rows[0]['role'],
                             // about: result[0]['about'],
                             handle: result.rows[0]['handle'],
                             email: result.rows[0]['email'],
@@ -937,13 +860,13 @@ app.post('/googleAuthRegister', async (req, res) => {
             var given_name = payload["given_name"];
             var family_name = payload["family_name"];
             var locale = payload["locale"];
-            var usertype = req.body.usertype;
+            var role = req.body.role;
 
 
             var email = payload["email"];
             //SIGN IN
 
-            let sql = `select * from trial.users where email=$1`;
+            let sql = `select * from users where email=?`;
             db.query(sql, [email], async (err, result) => {
                 if (err) {
                     res.status(400).send(err);
@@ -963,12 +886,12 @@ app.post('/googleAuthRegister', async (req, res) => {
                     var userlocation = await locator.getUserLocation("102.89.23.163");
                     console.log(userlocation.country_code)
 
-                    let countryid = await db.query(`SELECT id FROM trial.countries WHERE iso2=$1`, [userlocation.country_code]);
+                    let countryid = await db.query(`SELECT id FROM countries WHERE iso2=?`, [userlocation.country_code]);
                     console.log(countryid['rows'][0]['id'])
 
 
-                    let sql = `INSERT INTO trial.users (name,email,password,usertype,country_id,latitude,longitude) VALUES ($1,$2,$3,$4,$5,$6,$7);`;
-                    db.query(sql, [name, email, 'GOOGLE_AUTH', usertype, countryid['rows'][0]['id'], userlocation.latitude, userlocation.longitude], (err, result) => {
+                    let sql = `INSERT INTO users (name,email,	password_hash,role,country_id,latitude,longitude) VALUES (?,?,?,?,?,?,?);`;
+                    db.query(sql, [name, email, 'GOOGLE_AUTH', role, countryid['rows'][0]['id'], userlocation.latitude, userlocation.longitude], (err, result) => {
                         if (err) {
                             res.status(400).json({
                                 success: false,
@@ -977,7 +900,7 @@ app.post('/googleAuthRegister', async (req, res) => {
                             return
                         }
 
-                        sqlput = `SELECT * FROM trial.users WHERE email=$1`;
+                        sqlput = `SELECT * FROM users WHERE email=?`;
                         db.query(sqlput, [email], async (err, result) => {
 
                             if (err) {
@@ -997,7 +920,7 @@ app.post('/googleAuthRegister', async (req, res) => {
                                     name: result.rows[0]['name'],
                                     email: result.rows[0]['email'],
                                     createdat: result.rows[0]['createdat'],
-                                    usertype: result.rows[0]['usertype'],
+                                    role: result.rows[0]['role'],
                                     // about: result[0]['about'],
                                     handle: result.rows[0]['handle'],
                                     email: result.rows[0]['email'],
@@ -1041,7 +964,7 @@ app.post('/googleAuthRegister', async (req, res) => {
 app.post('/verifyRecOTP', (req, res) => {
 
     try {
-        let sql = `SELECT email FROM trial.users WHERE email=$1`;
+        let sql = `SELECT email FROM users WHERE email=?`;
         db.query(sql, [req.body.email], (err, result) => {
             if (err) {
                 res.status(400).json({
@@ -1053,7 +976,7 @@ app.post('/verifyRecOTP', (req, res) => {
 
 
 
-            let sql = `SELECT user_email,otp_pass FROM otp WHERE user_email=$1 AND otp_pass=$1`;
+            let sql = `SELECT user_email,otp_pass FROM otp WHERE user_email=? AND otp_pass=?`;
             db.query(sql, [req.body.email, req.body.otp], (err, result) => {
                 if (err) {
                     res.status(400).json({
@@ -1065,7 +988,7 @@ app.post('/verifyRecOTP', (req, res) => {
 
 
                 if (result.length) {
-                    let sqldel = `DELETE FROM otp WHERE user_email=$1 AND otp_pass=$1`;
+                    let sqldel = `DELETE FROM otp WHERE user_email=? AND otp_pass=?`;
                     db.query(sqldel, [req.body.email, req.body.otp], (err, result) => {
                         if (err) {
                             res.status(400).json({

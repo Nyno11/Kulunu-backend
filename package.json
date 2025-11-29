@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start_prod": "node index.js",
+    "dev": "node index.js"
   },
   "repository": {
     "type": "git",

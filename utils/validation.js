@@ -41,11 +41,10 @@ function loginCheck(reqbody) {
 function registerCheck(reqbody) {
     const schema = Joi.object({
 
-        name: Joi.string().required(),
+        full_name: Joi.string().required(),
         email: Joi.string().email().required(),
         password: Joi.string().required(),
-        usertype: Joi.string().required(),
-        handle: Joi.string().required(),
+        role: Joi.string().required(),
     }).options({ allowUnknown: true });
 
     return schema.validate(reqbody, {

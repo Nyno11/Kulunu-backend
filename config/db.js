@@ -19,7 +19,7 @@ const pool = mysql.createPool({
     host: 'localhost',
     user: 'root',
     password: "",
-    database: 'test',
+    database: 'kulunu',
     waitForConnections: true,
     connectionLimit: 10,
     maxIdle: 10, // max idle connections, the default value is the same as `connectionLimit`
@@ -27,6 +27,13 @@ const pool = mysql.createPool({
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
+});
+
+
+pool.on('connection', function (poolConnection) {
+    // poolConnection.config.namedPlaceholders = true;
+
+    console.log("Connected to DB");
 });
 
 export default pool;
