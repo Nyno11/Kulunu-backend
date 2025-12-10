@@ -7,7 +7,7 @@ var transporter = nodemailer.createTransport({
     secure: true, // use TLS
     auth: {
         user: "info@kulunu.app",
-        pass: "",
+        pass: "sep6$YsQXSyB",
     },
     tls: {
         rejectUnauthorized: false
@@ -183,6 +183,85 @@ async function sendEmailtoUser(email, subject, header, body) {
     }
 
 }
+
+
+// --- FILE: emailService.js ---
+// ```js
+// // emailService.js - send confirmation emails with an attached PDF ticket
+// const nodemailer = require('nodemailer');
+// const PDFDocument = require('pdfkit');
+// const { Readable } = require('stream');
+// require('dotenv').config();
+
+// const transporter = nodemailer.createTransport({
+//   host: process.env.EMAIL_HOST,
+//   port: parseInt(process.env.EMAIL_PORT || '587'),
+//   secure: false,
+//   auth: {
+//     user: process.env.EMAIL_USER,
+//     pass: process.env.EMAIL_PASS
+//   }
+// });
+
+// function pdfBufferFromBooking(booking, orderData) {
+//   // booking: DB booking row; orderData: Amadeus order response
+//   const doc = new PDFDocument();
+//   const buffers = [];
+//   doc.on('data', buffers.push.bind(buffers));
+//   return new Promise((resolve, reject) => {
+//     doc.on('end', () => {
+//       const pdfData = Buffer.concat(buffers);
+//       resolve(pdfData);
+//     });
+
+//     doc.fontSize(20).text('Flight Itinerary', { align: 'center' });
+//     doc.moveDown();
+//     doc.fontSize(12).text(`Booking ID: ${booking.id}`);
+//     doc.text(`PNR: ${orderData.data && orderData.data.itineraries ? (orderData.data && orderData.data.id) : 'N/A'}`);
+//     doc.moveDown();
+
+//     // Simplified passenger and segments rendering
+//     if (orderData.data && orderData.data.travelers) {
+//       doc.text('Passengers:');
+//       orderData.data.travelers.forEach((t, i) => {
+//         doc.text(`${i + 1}. ${t.gender} ${t.name.lastName}, ${t.name.firstName}`);
+//       });
+//       doc.moveDown();
+//     }
+
+//     if (orderData.data && orderData.data.itineraries) {
+//       doc.text('Itineraries:');
+//       orderData.data.itineraries.forEach((it, idx) => {
+//         doc.text(`Itinerary ${idx + 1}:`);
+//         it.segments.forEach((s) => {
+//           doc.text(` - ${s.departure.iataCode} (${s.departure.at}) -> ${s.arrival.iataCode} (${s.arrival.at}) Airline: ${s.carrierCode} ${s.number}`);
+//         });
+//       });
+//     }
+
+//     doc.end();
+//   });
+// }
+
+// async function sendTicketEmail(to, subject, text, booking, orderData) {
+//   const pdf = await pdfBufferFromBooking(booking, orderData);
+
+//   const info = await transporter.sendMail({
+//     from: process.env.FROM_EMAIL,
+//     to,
+//     subject,
+//     text,
+//     attachments: [
+//       {
+//         filename: `itinerary_${booking.id}.pdf`,
+//         content: pdf
+//       }
+//     ]
+//   });
+//   return info;
+// }
+
+// module.exports = { sendTicketEmail };
 
 
 

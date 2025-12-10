@@ -655,7 +655,7 @@ app.post('/resetpassword', async (req, res) => {
 // Send Email to reset password
 
 
-app.post('/sendresetemail', (req, res) => {
+app.post('/sendresetemail', async (req, res) => {
 
 
     try {
@@ -664,18 +664,16 @@ app.post('/sendresetemail', (req, res) => {
 
 
 
+        let sql = "SELECT * FROM users WHERE email=?";
+        const [rows, fields] = await db.query(sql, [req.body.email]);
 
-        db.query('SELECT id_user FROM users WHERE email=?', [email], async (err, result) => {
-            console.log(result.rows[0].id_user)
 
-            if (err) {
-                res.status(400).json({
-                    success: false,
-                    message: err.message
-                });
-            }
+        if (rows.length > 0) {
+            console.log(rows[0].id_user)
 
-            await jwthelper.signPasswordToken(result.rows[0].id_user, req, res).then(async (passwordToken) => {
+
+
+            await jwthelper.signPasswordToken(rows[0].id_user, req, res).then(async (passwordToken) => {
 
                 console.log(passwordToken);
                 await mailer.sendEmailtoUser(email, "Password Reset", "You requested a password reset", "<a style='font-size:12px;line-height:14px;text-align:center;color:#50a1f7'  target='_blank' href='https://localhost/trial/change-password.php?token=" + passwordToken + "'>https://localhost/trial/change-password?token=$token</a>").then((success) => {
@@ -701,7 +699,12 @@ app.post('/sendresetemail', (req, res) => {
                 });
 
             })
-        });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: "Please check email address"
+            })
+        }
 
     } catch (err) {
         console.log(err);

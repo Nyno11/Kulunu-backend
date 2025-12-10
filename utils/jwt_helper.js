@@ -209,7 +209,7 @@ export default {
                 //         }))
 
                 //     }
-                //     return resolve(token)
+                return resolve(token)
 
                 // })
 
