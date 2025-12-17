@@ -93,7 +93,7 @@ const api = {
             destinationLocationCode: params.destination,
             departureDate: params.departureDate,
             returnDate: params.returnDate,
-            adults: params.adults || '1',
+            adults: params.adults || 1,
             travelClass: params.travelClass || 'ECONOMY',
             max: params.max || 20,
         });

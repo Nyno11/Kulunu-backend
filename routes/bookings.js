@@ -61,8 +61,8 @@ app.post('/api/create-booking', async (req, res) => {
         const [userRows] = await conn.query('SELECT * FROM users WHERE email = ?', [req.body.user.email]);
         let userId;
         if (userRows.length === 0) {
-            const [r] = await conn.query('INSERT INTO users (email,name) VALUES (?,?)', [req.body.user.email, req.body.user.name]);
-            userId = r.insertId;
+            // const [r] = await conn.query('INSERT INTO users (email,name) VALUES (?,?)', [req.body.user.email, req.body.user.name]);
+            // userId = r.insertId;
         } else {
             userId = userRows[0].id;
         }
@@ -71,13 +71,13 @@ app.post('/api/create-booking', async (req, res) => {
         const bookingId = b.insertId;
 
         // Create a Stripe PaymentIntent for the amount
-        const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round((req.body.total || 0) * 100),
-            currency: req.body.currency || 'usd',
-            metadata: { booking_id: bookingId.toString() }
-        });
+        // const paymentIntent = await paystack.paymentIntents.create({
+        //     amount: Math.round((req.body.total || 0) * 100),
+        //     currency: req.body.currency || 'usd',
+        //     metadata: { booking_id: bookingId.toString() }
+        // });
 
-        await conn.query('INSERT INTO payments (booking_id,stripe_payment_intent,amount,currency,status) VALUES (?,?,?,?,?)', [bookingId, paymentIntent.id, req.body.total, req.body.currency || 'USD', paymentIntent.status]);
+        await conn.query('INSERT INTO payments (booking_id,paystack_payment_intent,amount,currency,status) VALUES (?,?,?,?,?)', [bookingId, paymentIntent.id, req.body.total, req.body.currency || 'USD', paymentIntent.status]);
 
         await conn.commit();
         res.json({ bookingId, clientSecret: paymentIntent.client_secret });

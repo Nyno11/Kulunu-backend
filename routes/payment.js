@@ -60,7 +60,7 @@ app.post('/webhook/paystack', express.raw({ type: 'application/json' }), async (
             await conn.query('UPDATE bookings SET status=?, amadeus_order_id=?, pnr=? WHERE id=?', ['booked', amadeusOrderId, pnr, bookingId]);
 
             // Send an email with attached PDF ticket
-            await sendTicketEmail(user.email, 'Your flight booking confirmation', 'Thank you for booking. See attached itinerary.', booking, orderData);
+            await sendTicketEmail(user.email, 'Your flight booking confirmation', 'Thank you for booking with Kulunu. See attached itinerary.', booking, orderData);
 
             await conn.commit();
         } catch (err) {
