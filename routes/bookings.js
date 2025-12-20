@@ -2,6 +2,7 @@ import express from 'express';
 import amadeusSvc from '../config/amadeus.js';
 import db from '../config/db.js';
 var app = express.Router();
+import validation from '../utils/validation.js';
 export default app;
 
 
@@ -87,5 +88,70 @@ app.post('/api/create-booking', async (req, res) => {
         res.status(500).json({ error: err.message });
     } finally {
         conn.release();
+    }
+});
+
+// Add Travel Information
+app.post('/add-traveler', async (req, res) => {
+
+    // 1. Validation using Joi Library
+    // Make sure to define 'travelCheck' in your validation file
+    const { error } = validation.travelCheck(req.body);
+
+    if (error) {
+        console.log(error);
+        return res.status(400).json({
+            success: false,
+            message: error.details[0].message
+        });
+    }
+
+    try {
+        // 2. Prepare the SQL query
+        const sql = `
+            INSERT INTO travel_info (
+                id_user, title, traveler_type, first_name, last_name, 
+                middle_name, gender, date_of_birth, email, 
+                mobile_number, nationality, passport_number, passport_expiry_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+        const values = [
+            req.body.id_user,
+            req.body.title,
+            req.body.traveler_type,
+            req.body.first_name,
+            req.body.last_name,
+            req.body.middle_name || null, // Handle optional field
+            req.body.gender,
+            req.body.date_of_birth,
+            req.body.email,
+            req.body.mobile_number,
+            req.body.nationality,
+            req.body.passport_number,
+            req.body.passport_expiry_date
+        ];
+
+        // 3. Execute the query
+        const [result] = await db.query(sql, values);
+
+        if (result.affectedRows > 0) {
+            res.status(200).json({
+                success: true,
+                message: "Travel information saved successfully",
+                insertId: result.insertId // Returns the ID of the new row
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: "Failed to save information"
+            });
+        }
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            success: false,
+            message: "An internal server error occurred"
+        });
     }
 });

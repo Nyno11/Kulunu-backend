@@ -79,4 +79,25 @@ function setupCheck(reqbody) {
     });
 }
 
-export default { emailCheck, changePassCheck, loginCheck, registerCheck, resetPassCheck, setupCheck };
+
+const travelCheck = (data) => {
+    const schema = Joi.object({
+        id_user: Joi.number().required(),
+        title: Joi.string().valid('Mr', 'Mrs', 'Miss', 'Ms', 'Prof', 'Hon', 'Sir', 'Pst', 'Dr', 'Sen', 'Gov', 'Bar').required(),
+        traveler_type: Joi.string().valid('Adult', 'Child', 'Infant').required(),
+        first_name: Joi.string().min(2).max(100).required(),
+        last_name: Joi.string().min(2).max(100).required(),
+        middle_name: Joi.string().allow('', null),
+        gender: Joi.string().valid('Male', 'Female').required(),
+        date_of_birth: Joi.date().required(),
+        email: Joi.string().email().required(),
+        mobile_number: Joi.string().required(),
+        nationality: Joi.string().required(),
+        passport_number: Joi.string().required(),
+        passport_expiry_date: Joi.date().required()
+    });
+    return schema.validate(data);
+};
+
+
+export default { emailCheck, changePassCheck, loginCheck, travelCheck, registerCheck, resetPassCheck, setupCheck };
