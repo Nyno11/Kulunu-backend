@@ -1,6 +1,5 @@
-import express from 'express';
+const express = require('express');
 var app = express.Router();
-export default app;
 
 
 
@@ -73,3 +72,5 @@ app.post('/webhook/paystack', express.raw({ type: 'application/json' }), async (
 
     res.json({ received: true });
 });
+
+module.exports = app;

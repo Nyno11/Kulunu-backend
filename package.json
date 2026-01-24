@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Backend Services for Kulunu",
   "main": "index.js",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "start": "node index.js",
     "start_prod": "node index.js",

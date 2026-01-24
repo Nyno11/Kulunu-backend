@@ -1,6 +1,7 @@
 
 // const mysql = require('mysql2');
-import mysql from 'mysql2/promise';
+
+const mysql2 = require('mysql2/promise');
 
 // const con = mysql.createConnection({
 //     host: "localhost",
@@ -15,7 +16,7 @@ import mysql from 'mysql2/promise';
 // import mysql from 'mysql2/promise';
 
 // Create the connection pool. The pool-specific settings are the defaults
-const pool = mysql.createPool({
+const pool = mysql2.createPool({
     host: 'localhost',
     user: 'root',
     password: "",
@@ -36,6 +37,8 @@ pool.on('connection', function (poolConnection) {
     console.log("Connected to DB");
 });
 
-export default pool;
+
+
+module.exports = pool;
 
 

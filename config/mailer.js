@@ -1,5 +1,5 @@
-import nodemailer from 'nodemailer';
 
+const nodemailer = require('nodemailer');
 var transporter = nodemailer.createTransport({
     pool: true,
     host: "mail.kulunu.app",
@@ -265,5 +265,4 @@ async function sendEmailtoUser(email, subject, header, body) {
 
 
 
-
-export default { sendEmailtoUser };
+module.exports = { sendEmailtoUser };

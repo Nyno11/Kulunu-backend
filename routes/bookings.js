@@ -1,14 +1,18 @@
-import express from 'express';
-import amadeusSvc from '../config/amadeus.js';
-import db from '../config/db.js';
+
+const express = require('express');
+
+const amadeusSvc = require('../config/amadeus.js');
+
+const db = require('../config/db.js');
 var app = express.Router();
-import validation from '../utils/validation.js';
-export default app;
+
+const validation = require('../utils/validation.js');
+
 
 
 // index.js - main Express server + endpoints
 
-import bodyParser from 'body-parser';
+
 // import uuid from 'uuid';
 
 
@@ -155,3 +159,4 @@ app.post('/add-traveler', async (req, res) => {
         });
     }
 });
+module.exports = app;

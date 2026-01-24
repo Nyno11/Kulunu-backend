@@ -1,22 +1,27 @@
-import express from 'express';
-var app = express.Router();
-import db from '../config/db.js';
-import mailer from '../config/mailer.js';
-import validation from '../utils/validation.js';
-import jwthelper from '../utils/jwt_helper.js';
-import axios from 'axios';
 
-import { OAuth2Client } from 'google-auth-library';
+const express = require('express');
+var app = express.Router();
+const db = require('../config/db.js');
+
+
+const mailer = require('../config/mailer.js');
+const validation = require('../utils/validation.js');
+
+const jwthelper = require('../utils/jwt_helper.js');
+
+const axios = require('axios');
+const googleAuthLogin = require('google-auth-library');
+const { OAuth2Client } = googleAuthLogin;
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-import bcrypt from "bcrypt";
+const bcrypt = require('bcrypt');
 
 
 
-db.on('error', e => {
-    console.error('Database error', e);
-    db = null;
-});
+// db.on('error', e => {
+//     console.error('Database error', e);
+//     db = null;
+// });
 
 
 //Check Email Validity 
@@ -155,13 +160,13 @@ app.post('/login', async (req, res) => {
 
 
     // Validation of authentication using Joi Library
-
+    console.log('ddd')
     const { error } = validation.loginCheck(req.body)
 
 
     if (error) {
         console.log(error)
-        res.json({
+        return res.json({
             success: false,
             message: error.details[0].message
         })
@@ -1039,4 +1044,4 @@ app.post('/verifyRecOTP', (req, res) => {
 
 
 
-export default app;
+module.exports = app;

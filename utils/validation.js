@@ -1,5 +1,5 @@
-import Joi from 'joi';
 
+const Joi = require('joi');
 
 
 function emailCheck(reqbody) {
@@ -100,4 +100,4 @@ const travelCheck = (data) => {
 };
 
 
-export default { emailCheck, changePassCheck, loginCheck, travelCheck, registerCheck, resetPassCheck, setupCheck };
+module.exports = { emailCheck, changePassCheck, loginCheck, travelCheck, registerCheck, resetPassCheck, setupCheck };

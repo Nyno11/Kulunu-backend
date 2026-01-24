@@ -1,6 +1,6 @@
-import JWT from 'jsonwebtoken';
 
-export default {
+const JWT = require('jsonwebtoken');
+module.exports = {
     signAccessToken: (userId, req, res) => {
         return new Promise((resolve, reject) => {
             const payload = {}

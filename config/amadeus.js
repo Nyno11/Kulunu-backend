@@ -71,10 +71,12 @@
 
 
 
-// amadeusService.js
-import Amadeus from 'amadeus';
+const Amadeus = require('amadeus');
 
-import dotenv from 'dotenv';
+const dotenv = require('dotenv');
+
+
+
 // const env = "production"; 
 const env = "development";
 
@@ -86,7 +88,7 @@ const amadeus = new Amadeus({
     clientSecret: process.env.AMADEUS_CLIENT_SECRET,
 });
 
-const api = {
+module.exports = {
     searchFlights: async (params) => {
         const resp = await amadeus.shopping.flightOffersSearch.get({
             originLocationCode: params.origin,
@@ -143,8 +145,6 @@ const api = {
     },
 
 };
-
-export default api;
 
 
 
