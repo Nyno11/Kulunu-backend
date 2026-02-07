@@ -17,145 +17,228 @@ var transporter = nodemailer.createTransport({
 
 function getHTMLWelcome(header, body) {
     return `
-    <div style="width:100%!important;min-width:100%;margin:0;padding:0;background-color:#ffffff">
-    
-    <table style="border-spacing:0;border-collapse:collapse;vertical-align:top;height:100%;width:100%;table-layout:fixed" cellpadding="0" cellspacing="0" width="100%" border="0">
-        <tbody>
-            <tr style="vertical-align:top">
-                <td style="word-break:break-word;border-collapse:collapse!important;vertical-align:top;text-align:center;background-color:#ffffff" align="center" valign="top">
-                    <table style="border-spacing:0;border-collapse:collapse;vertical-align:top;background-color:transparent" cellpadding="0" cellspacing="0" align="center" width="100%" border="0">
-                        <tbody>
-                            <tr style="vertical-align:top">
-                                <td style="word-break:break-word;border-collapse:collapse!important;vertical-align:top" width="100%">
-                                    
-                                    
-                                    <table style="border-spacing:0;border-collapse:collapse;vertical-align:top;max-width:500px;margin:0 auto;text-align:inherit" cellpadding="0" cellspacing="0" align="center" width="100%" border="0">
-                                        <tbody>
-                                            <tr style="vertical-align:top">
-                                                <td style="word-break:break-word;border-collapse:collapse!important;vertical-align:top" width="100%">
-                                                    <table style="border-spacing:0;border-collapse:collapse;vertical-align:top;width:100%;max-width:500px;color:#000000;background-color:transparent" cellpadding="0" cellspacing="0" width="100%" bgcolor="transparent">
-                                                        <tbody>
-                                                            <tr style="vertical-align:top">
-                                                                <td style="word-break:break-word;border-collapse:collapse!important;vertical-align:top;text-align:center;font-size:0">
-                                                                    
-                                                                    
-                                                                    <div style="display:inline-block;vertical-align:top;width:500px">
-                                                                        <table style="border-spacing:0;border-collapse:collapse;vertical-align:top" cellpadding="0" cellspacing="0" align="center" width="100%" border="0">
-                                                                            <tbody>
-                                                                                <tr style="vertical-align:top">
-                                                                                    <td style="word-break:break-word;border-collapse:collapse!important;vertical-align:top;background-color:transparent;padding-top:5px;padding-right:0px;padding-bottom:5px;padding-left:0px;border-top:0px solid transparent;border-right:0px solid transparent;border-bottom:0px solid transparent;border-left:0px solid transparent">
-                                                                                        <table style="border-spacing:0;border-collapse:collapse;vertical-align:top" cellpadding="0" cellspacing="0" width="100%" border="0">
-                                                                                            <tbody>
-                                                                                                <tr style="vertical-align:top">
-                                                                                                    <td style="word-break:break-word;border-collapse:collapse!important;vertical-align:top;width:100%;padding-top:10px;padding-right:30px;padding-bottom:10px;padding-left:30px" align="center">
-                                                                                                        <div align="center">
-                                                                                                            <img style="outline:none;text-decoration:none;clear:both;display:block;border:0;height:auto;line-height:100%;margin:0 auto;float:none;max-height:40px" align="center" border="0" src="" alt="Image" title="Image" class="CToWUd" >
-                                                                                                        </div>
-                                                                                                    </td>
-                                                                                                </tr>
-                                                                                            </tbody>
-                                                                                        </table>
-                                                                                    </td>
-                                                                                </tr>
-                                                                            </tbody>
-                                                                        </table>
-                                                                    </div>
-                                                                    
-                                                                    
-                                                                </td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                    
-                                    
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <table style="border-spacing:0;border-collapse:collapse;vertical-align:top;background-color:transparent" cellpadding="0" cellspacing="0" align="center" width="100%" border="0">
-                        <tbody>
-                            <tr style="vertical-align:top">
-                                <td style="word-break:break-word;border-collapse:collapse!important;vertical-align:top" width="100%">
-                                    
-                                    
-                                    <table style="border-spacing:0;border-collapse:collapse;vertical-align:top;max-width:500px;margin:0 auto;text-align:inherit" cellpadding="0" cellspacing="0" align="center" width="100%" border="0">
-                                        <tbody>
-                                            <tr style="vertical-align:top">
-                                                <td style="word-break:break-word;border-collapse:collapse!important;vertical-align:top" width="100%">
-                                                    <table style="border-spacing:0;border-collapse:collapse;vertical-align:top;width:100%;max-width:500px;color:#000000;background-color:transparent" cellpadding="0" cellspacing="0" width="100%" bgcolor="transparent">
-                                                        <tbody>
-                                                            <tr style="vertical-align:top">
-                                                                <td style="word-break:break-word;border-collapse:collapse!important;vertical-align:top;text-align:center;font-size:0">
-                                                                    
-                                                                    
-                                                                    <div style="display:inline-block;vertical-align:top;width:500px">
-                                                                        <table style="border-spacing:0;border-collapse:collapse;vertical-align:top" cellpadding="0" cellspacing="0" align="center" width="100%" border="0">
-                                                                            <tbody>
-                                                                              
-                                                                                <tr style="vertical-align:top">
-                                                                                    <td style="word-break:break-word;border-collapse:collapse!important;vertical-align:top;background-color:transparent;padding-top:0;padding-right:0;padding-bottom:30px;padding-left:0;border-top:1px solid #ededed;border-right:1px solid #ededed;border-bottom:1px solid #ededed;border-left:1px solid #ededed">
-                                                                                        
-                                                                                       
-                                                                                        <table style="border-spacing:0;border-collapse:collapse;vertical-align:top" cellpadding="0" cellspacing="0" width="100%">
-                                                                                           
-                                                                                        <tbody>
-                                                                                                
-                                                                                                <tr style="vertical-align:top">
-                                                                                                    <td style="word-break:break-word;border-collapse:collapse!important;vertical-align:top;padding-top:10px;padding-right:10px;padding-bottom:20px;padding-left:10px">
-                                                                                                        <div style="color:#555555;line-height:120%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Roboto','Oxygen','Ubuntu','Cantarell','Fira Sans','Droid Sans','Helvetica Neue',sans-serif">
-                                                                                                            <div style="font-size:14px;line-height:17px;text-align:center;color:#555555;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Roboto','Oxygen','Ubuntu','Cantarell','Fira Sans','Droid Sans','Helvetica Neue',sans-serif">
-                                                                                                                <p style="margin:20px 0 0;font-size:14px;line-height:17px;text-align:center">
-                                                                                                                    <strong>
-                                                                                                                        <span style="font-size:16px;line-height:19px">`+ header + `</span>
-                                                                                                                    </strong>
-                                                                                                                    <br>
-                                                                                                                </p>
-                                                                                                            </div>
-                                                                                                        </div>
-                                                                                                    </td>
-                                                                                                </tr>
-                                                                                            </tbody>
-                                                                                        </table>
-                                                                                        <table style="border-spacing:0;border-collapse:collapse;vertical-align:top" cellpadding="0" cellspacing="0" width="100%">
-                                                                                            <tbody>
-                                                                                        <tr style="vertical-align:top">
-                                                                                        <td style="word-break:break-word;border-collapse:collapse!important;vertical-align:top;background-color:transparent;padding-top:0;padding-right:20px;padding-bottom:20px;padding-left:20px">
-                                                                                            <div style="font-size:12px;line-height:14px;text-align:center;color:#555555;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Roboto','Oxygen','Ubuntu','Cantarell','Fira Sans','Droid Sans','Helvetica Neue',sans-serif">
-                                                                                                <p style="margin:0;font-size:12px;line-height:14px;text-align:center">`+ body + `
-                                                                                                </p>
-                                                                                            </div>
-                                                                                        </td>
-                                                                                        </tr>
-                                                                                        </tbody>
-                                                                                        </table>
-                                                                                       
-                                                                    </div>
-                                                                    
-                                                                    
-                                                                </td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                    
-                                    
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+   <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kulunu Travel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body, table, td, a {
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    table {
+      border-collapse: collapse !important;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100% !important;
+      background-color: #f5f6fa;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .wrapper {
+      width: 100%;
+      background-color: #f5f6fa;
+      padding: 20px 0;
+    }
+
+    .container {
+      max-width: 600px;
+      background-color: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      background-color: #0CA6EF;
+      padding: 18px 20px;
+      color: #ffffff;
+    }
+
+    .header-title {
+      font-size: 22px;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    .header-sub {
+      font-size: 13px;
+      margin: 4px 0 0;
+      opacity: 0.95;
+    }
+
+    /* Body */
+    .content {
+      padding: 26px 24px;
+      color: #333333;
+    }
+
+    .content h2 {
+      font-size: 20px;
+      margin: 0 0 12px;
+      color: #0CA6EF;
+    }
+
+    .content p {
+      font-size: 15px;
+      line-height: 1.6;
+      margin: 0 0 16px;
+    }
+
+    /* Info card */
+    .card {
+      background-color: #f1f5f9;
+      border-radius: 10px;
+      padding: 16px;
+      margin: 20px 0;
+    }
+
+    .card-row {
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .card-row strong {
+      color: #0b2030;
+    }
+
+    /* Button */
+    .btn {
+      display: inline-block;
+      background-color: #0CA6EF;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 12px 22px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: bold;
+    }
+
+    /* Footer */
+    .footer {
+      background-color: #f1f5f9;
+      padding: 16px;
+      text-align: center;
+      font-size: 12px;
+      color: #666666;
+    }
+
+    .footer a {
+      color: #0CA6EF;
+      text-decoration: none;
+    }
+
+    /* Mobile */
+    @media screen and (max-width: 480px) {
+      .content {
+        padding: 20px 16px;
+      }
+      .header-title {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<table class="wrapper" width="100%" role="presentation">
+  <tr>
+    <td align="center">
+
+      <table class="container" width="100%" role="presentation">
+
+        <!-- HEADER -->
+        <tr>
+          <td class="header">
+            <table width="100%" role="presentation">
+              <tr>
+                <!-- Logo (LEFT) -->
+                <td align="left" width="40%">
+                  <img
+                    src="https://kulunu.app/assets/img/ku.png"
+                    alt="Kulunu"
+                    width="110"
+                    style="display:block; max-width:110px;"
+                  >
                 </td>
-            </tr>
-        </tbody>
-    </table><div class="yj6qo"></div><div class="adL">
-</div>
-</div>`;
+
+                <!-- Brand text (RIGHT) -->
+                <td align="left" width="60%">
+                  <p class="header-title">Kulunu ✈</p>
+                  <p class="header-sub">Your Travel Partner</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- BODY -->
+        <tr>
+          <td class="content">
+
+            <h2> `+ header + ` 🎉</h2>
+
+            <p>Dear <strong>User</strong>,</p>
+
+            <p>
+              `+ body + `
+            </p>
+
+            <!-- INFO CARD -->
+            <table class="card" width="100%" role="presentation">
+              <tr>
+                <td class="card-row"><strong>Route:</strong> Lagos → Abuja</td>
+              </tr>
+              <tr>
+                <td class="card-row"><strong>Date:</strong> 22 July 2025</td>
+              </tr>
+              <tr>
+                <td class="card-row"><strong>Airline:</strong> Air Peace</td>
+              </tr>
+              <tr>
+                <td class="card-row"><strong>Booking ID:</strong> WK123ABC</td>
+              </tr>
+            </table>
+
+            <table width="100%" role="presentation">
+              <tr>
+                <td align="center">
+                  <a href="#" class="btn">View Booking</a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin-top:20px;">
+              Need help? Our support team is always available to assist you.
+            </p>
+
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td class="footer">
+            <p>
+              © 2025 Kulunu. All rights reserved.<br>
+              <a href="#">Unsubscribe</a> | <a href="#">Support</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>`;
 }
 
 async function sendEmailtoUser(email, subject, header, body) {
