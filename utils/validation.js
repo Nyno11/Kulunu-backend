@@ -55,7 +55,7 @@ function registerCheck(reqbody) {
 function resetPassCheck(reqbody) {
     const schema = Joi.object({
 
-        token: Joi.string().required(),
+        passwordtoken: Joi.string().required(),
         newpassword: Joi.string().required(),
         newpasswordrepeat: Joi.string().required(),
     }).options({ allowUnknown: true });

@@ -13,6 +13,7 @@ const axios = require('axios');
 const googleAuthLogin = require('google-auth-library');
 const { OAuth2Client } = googleAuthLogin;
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const crypto = require('crypto');
 
 const bcrypt = require('bcrypt');
 
@@ -607,25 +608,37 @@ app.post('/resetpassword', async (req, res) => {
                 if (req.body.newpassword.length >= 6 && req.body.newpassword.length <= 60) {
                     const salt = await bcrypt.genSalt(10);
                     const password = await bcrypt.hash(req.body.newpassword, salt);
-                    await jwthelper.verifyPasswordToken(req.body.token, req, res).then(async (userId) => {
-                        console.log(userId);
-
-                        db.query('UPDATE users SET password=? WHERE id_user=?', [password, userId], async (err, result) => {
-                            if (err) {
-                                res.status(400).json({
-                                    success: false,
-                                    message: err.message
-                                });
-                            }
-                            res.status(200).json({
-                                success: true,
-                                message: "Password reset successfully",
-                            })
-                        });
 
 
+                    // Check token and expiration
+                    const [tokens] = await db.execute(
+                        `SELECT * FROM password_tokens 
+             WHERE  token = ? 
+             AND expires_at > NOW()`,
+                        [req.body.passwordtoken]
+                    );
 
-                    });
+                    if (tokens.length === 0) {
+                        res.status(200).json({ success: false, message: "Invalid or expired token" });
+                    }
+
+                    console.log(tokens[0]['id_user']);
+
+                    db.query('UPDATE users SET password_hash=? WHERE id_user=?', [password, tokens[0]['id_user']]);
+
+
+                    await db.execute(
+                        "DELETE FROM password_tokens WHERE token = ? OR id_user = ? ",
+                        [req.body.passwordtoken, tokens[0]['id_user']]
+                    );
+                    res.status(200).json({
+                        success: true,
+                        message: "Password reset successfully",
+                    })
+
+
+
+
                 }
                 else {
                     res.status(400).json({
@@ -659,6 +672,10 @@ app.post('/resetpassword', async (req, res) => {
 
 // Send Email to reset password
 
+function generatePasswordToken() {
+    return crypto.randomInt(100000, 1000000).toString();
+}
+
 
 app.post('/sendresetemail', async (req, res) => {
 
@@ -678,32 +695,43 @@ app.post('/sendresetemail', async (req, res) => {
 
 
 
-            await jwthelper.signPasswordToken(rows[0].id_user, req, res).then(async (passwordToken) => {
 
-                console.log(passwordToken);
-                await mailer.sendEmailtoUser(email, "Password Reset", "You requested a password reset", "<a style='font-size:12px;line-height:14px;text-align:center;color:#50a1f7'  target='_blank' href='https://localhost/trial/change-password.php?token=" + passwordToken + "'>https://localhost/trial/change-password?token=$token</a>").then((success) => {
+            let passwordToken = generatePasswordToken();
+            console.log(passwordToken);
+
+            // 3️⃣ Set expiration (10 minutes)
+            const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+            // 4️⃣ Insert into password_tokens table
+            await db.execute(
+                "INSERT INTO password_tokens (id_user, token, expires_at) VALUES (?, ?, ?)",
+                [rows[0].id_user, passwordToken, expiresAt]
+            );
+
+
+            await mailer.sendEmailtoUser(email, "Password Reset", "You requested a password reset", "Use " + passwordToken + " as your reset token").then((success) => {
 
 
 
-                    if (success) {
-                        console.log('Email sent!');
-                        res.status(200).json({
+                if (success) {
+                    console.log('Email sent!');
+                    res.status(200).json({
 
-                            success: true,
-                            message: "Reset email sent successful",
+                        success: true,
+                        message: "Reset email sent successful",
 
-                        })
+                    })
 
-                    } else {
-                        res.status(400).json({
-                            success: false,
-                            message: "An error occured",
-                        })
-                    }
+                } else {
+                    res.status(400).json({
+                        success: false,
+                        message: "An error occured",
+                    })
+                }
 
-                });
+            });
 
-            })
+
         } else {
             res.status(400).json({
                 success: false,
