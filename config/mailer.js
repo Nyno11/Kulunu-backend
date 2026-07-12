@@ -1,22 +1,22 @@
 
 const nodemailer = require('nodemailer');
 var transporter = nodemailer.createTransport({
-    pool: true,
-    host: "mail.kulunu.app",
-    port: 465,
-    secure: true, // use TLS
-    auth: {
-        user: "info@kulunu.app",
-        pass: "sep6$YsQXSyB",
-    },
-    tls: {
-        rejectUnauthorized: false
-    }
+  pool: true,
+  host: "mail.kulunu.app",
+  port: 465,
+  secure: true, // use TLS
+  auth: {
+    user: "info@kulunu.app",
+    pass: "sep6$YsQXSyB",
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
 });
 
 
-function getHTMLWelcome(header, body) {
-    return `
+function getHTMLWelcome(header, body, isBooking = false) {
+  return `
    <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -190,7 +190,7 @@ function getHTMLWelcome(header, body) {
               `+ body + `
             </p>
 
-            <!-- INFO CARD -->
+         `+ isBooking ? +`   <!-- INFO CARD -->
             <table class="card" width="100%" role="presentation">
               <tr>
                 <td class="card-row"><strong>Route:</strong> Lagos → Abuja</td>
@@ -213,6 +213,7 @@ function getHTMLWelcome(header, body) {
                 </td>
               </tr>
             </table>
+            `: ```
 
             <p style="margin-top:20px;">
               Need help? Our support team is always available to assist you.
@@ -242,28 +243,28 @@ function getHTMLWelcome(header, body) {
 }
 
 async function sendEmailtoUser(email, subject, header, body) {
-    var mailOptions = {
-        from: 'info@kulunu.app',
-        to: email,
-        subject: subject,
-        html: getHTMLWelcome(header, body)
-    };
+  var mailOptions = {
+    from: 'info@kulunu.app',
+    to: email,
+    subject: subject,
+    html: getHTMLWelcome(header, body)
+  };
 
-    try {
-        var info = await transporter.sendMail(mailOptions);
-        if (info.response.error) {
-            console.log(info.response.error);
-            return false;
-        } else {
-            console.log('Email sent: ' + info.response);
+  try {
+    var info = await transporter.sendMail(mailOptions);
+    if (info.response.error) {
+      console.log(info.response.error);
+      return false;
+    } else {
+      console.log('Email sent: ' + info.response);
 
 
-            return true;
+      return true;
 
-        }
-    } catch (e) {
-        console.log(e);
     }
+  } catch (e) {
+    console.log(e);
+  }
 
 }
 

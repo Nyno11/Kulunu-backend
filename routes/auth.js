@@ -622,7 +622,7 @@ app.post('/resetpassword', async (req, res) => {
                         res.status(200).json({ success: false, message: "Invalid or expired token" });
                     }
 
-                    console.log(tokens[0]['id_user']);
+
 
                     db.query('UPDATE users SET password_hash=? WHERE id_user=?', [password, tokens[0]['id_user']]);
 

@@ -116,8 +116,8 @@ app.post('/add-traveler', async (req, res) => {
             INSERT INTO travel_info (
                 id_user, title, traveler_type, first_name, last_name, 
                 middle_name, gender, date_of_birth, email, 
-                mobile_number, nationality, passport_number, passport_expiry_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                mobile_number, nationality, passport_number, passport_expiry_date,is_cotraveler
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ;
 
         const values = [
             req.body.id_user,
@@ -132,7 +132,8 @@ app.post('/add-traveler', async (req, res) => {
             req.body.mobile_number,
             req.body.nationality,
             req.body.passport_number,
-            req.body.passport_expiry_date
+            req.body.passport_expiry_date,
+            req.body.is_cotraveler || 0
         ];
 
         // 3. Execute the query
@@ -159,4 +160,56 @@ app.post('/add-traveler', async (req, res) => {
         });
     }
 });
+
+// Get all travelers for a specific user
+app.get('/travelers/:userId', async (req, res) => {
+    const userId = req.params.userId;
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: "User ID is required"
+        });
+    }
+
+    try {
+        const sql = `
+            SELECT 
+                id,
+                id_user, 
+                title, 
+                traveler_type, 
+                first_name, 
+                last_name,
+                middle_name, 
+                gender, 
+                date_of_birth, 
+                email, 
+                mobile_number, 
+                nationality, 
+                passport_number, 
+                passport_expiry_date,
+                is_cotraveler
+            FROM travel_info
+            WHERE id_user = ?
+            ORDER BY id DESC
+        `;
+
+        const [rows] = await db.query(sql, [userId]);
+
+        res.status(200).json({
+            success: true,
+            count: rows.length,
+            data: rows
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            success: false,
+            message: "An internal server error occurred"
+        });
+    }
+});
+
 module.exports = app;

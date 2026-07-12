@@ -81,7 +81,8 @@ var app = express();
 // // app.use(cors());
 
 // //This is to allow our api for parsing json
-app.use(express.json({ strict: false }));
+app.use(cors());
+app.use(express.json({ strict: false, limit: '20mb' }));
 
 
 app.post('/test', (req, res) => {
@@ -102,12 +103,16 @@ const flightsRoutes = require('./routes/flights.js');
 const bookingsRoutes = require('./routes/bookings.js');
 const paymentRoutes = require('./routes/payment.js');
 const adminRoutes = require('./routes/admin.js');
+const eventRoutes = require('./routes/event.js');
+const ticketRoutes = require('./routes/tickets.js');
 app.use('/', [
   authRoutes,
   flightsRoutes,
   bookingsRoutes,
   paymentRoutes,
   adminRoutes,
+  eventRoutes,
+  ticketRoutes,
 ]);
 
 // //Folders the app uses
