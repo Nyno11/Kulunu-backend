@@ -111,12 +111,16 @@ app.get('/events', async (req, res) => {
             return res.status(200).json({ success: true, data: rows.map(formatEvent) });
 
         } else if (category) {
+            const rawOffset = Math.max(Number(req.query.offset) || 0, 0);
+            const sortMap   = { date_asc: 'date ASC', date_desc: 'date DESC' };
+            const orderBy   = sortMap[req.query.sort] || 'created_at DESC';
+
             const [rows] = await db.query(
                 `SELECT * FROM events
                  WHERE status = 'active' AND category = ?
-                 ORDER BY created_at DESC
-                 LIMIT ?`,
-                [category, cap]
+                 ORDER BY ${orderBy}
+                 LIMIT ? OFFSET ?`,
+                [category, cap, rawOffset]
             );
             return res.status(200).json({ success: true, data: rows.map(formatEvent) });
 
@@ -147,6 +151,65 @@ app.get('/events', async (req, res) => {
                 },
             });
         }
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ success: false, message: 'An error occurred' });
+    }
+});
+
+// GET /events/search — public (must be before /events/:id so Express doesn't treat "search" as an id)
+// ?q=<text>        → searches title and venue (required, min 1 char)
+// ?category=<val>  → optional category filter
+// ?type=<val>      → optional type filter (physical | virtual)
+// ?date=<YYYY-MM-DD> → optional exact date filter
+// ?limit=<n>       → max 50, default 20
+// ?offset=<n>      → for pagination
+app.get('/events/search', async (req, res) => {
+    try {
+        const q        = (req.query.q || '').trim();
+        const category = req.query.category || null;
+        const type     = req.query.type     || null;
+        const date     = req.query.date     || null;
+        const limit    = Math.min(Number(req.query.limit)  || 20, 50);
+        const offset   = Math.max(Number(req.query.offset) || 0,  0);
+
+        if (!q) {
+            return res.status(400).json({ success: false, message: 'q is required' });
+        }
+
+        const like   = `%${q}%`;
+        const where  = ['e.status = ?', '(e.title LIKE ? OR e.venue LIKE ?)'];
+        const params = ['active', like, like];
+
+        if (category) { where.push('e.category = ?'); params.push(category); }
+        if (type)     { where.push('e.type = ?');     params.push(type); }
+        if (date)     { where.push('DATE(e.date) = ?'); params.push(date); }
+
+        const baseWhere = where.join(' AND ');
+
+        const [[{ total }], [rows]] = await Promise.all([
+            db.query(
+                `SELECT COUNT(*) AS total FROM events e WHERE ${baseWhere}`,
+                params
+            ),
+            db.query(
+                `SELECT e.*, u.full_name AS organizer_name
+                 FROM events e
+                 LEFT JOIN users u ON u.id_user = e.id_user
+                 WHERE ${baseWhere}
+                 ORDER BY e.date ASC
+                 LIMIT ? OFFSET ?`,
+                [...params, limit, offset]
+            ),
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            data:     rows.map(formatEvent),
+            total,
+            has_more: offset + rows.length < total,
+        });
 
     } catch (err) {
         console.error(err);
@@ -193,7 +256,20 @@ app.get('/admin/events', jwthelper.verifyAccessToken, async (req, res) => {
         const id_user = req.payload.aud;
 
         const [rows] = await db.query(
-            `SELECT * FROM events WHERE id_user = ? ORDER BY created_at DESC`,
+            `SELECT e.*,
+                COALESCE((
+                    SELECT SUM(tt.sold)
+                    FROM ticket_tiers tt
+                    WHERE tt.event_id = e.id_event
+                ), 0) AS tickets_sold,
+                COALESCE((
+                    SELECT SUM(ts.total_price)
+                    FROM ticket_sales ts
+                    WHERE ts.event_id = e.id_event
+                ), 0) AS revenue
+             FROM events e
+             WHERE e.id_user = ?
+             ORDER BY e.created_at DESC`,
             [id_user]
         );
 
@@ -334,6 +410,8 @@ function formatEvent(row) {
         status: row.status,
         id_user: row.id_user,
         created_at: row.created_at,
+        tickets_sold: Number(row.tickets_sold) || 0,
+        revenue:      Number(row.revenue)      || 0,
     };
 }
 

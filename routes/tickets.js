@@ -16,12 +16,19 @@ const mailer = nodemailer.createTransport({
     },
 });
 
-async function sendTicketEmail(to, ticketCode, eventTitle, tierName, quantity, eventDate, venue) {
+async function sendTicketEmail(to, tickets, eventTitle, tierName, eventDate, venue) {
     try {
+        const codesHtml = tickets.map(({ code, name }) => `
+            <div style="margin-top:12px;background:#f0f9ff;border-radius:10px;padding:14px;text-align:center">
+                <p style="margin:0;color:#555;font-size:12px">${name}</p>
+                <p style="margin:6px 0 0;font-size:20px;font-weight:700;letter-spacing:2px;color:#0CA6EF">${code}</p>
+            </div>
+        `).join('');
+
         await mailer.sendMail({
             from: process.env.MAIL_FROM || process.env.MAIL_USER,
             to,
-            subject: `Your ticket for ${eventTitle} — ${ticketCode}`,
+            subject: `Your ${tickets.length > 1 ? tickets.length + ' tickets' : 'ticket'} for ${eventTitle}`,
             html: `
                 <div style="font-family:'Segoe UI',sans-serif;max-width:560px;margin:auto;padding:32px;border-radius:12px;border:1px solid #e5e7eb">
                     <h2 style="color:#0b2030;margin-bottom:4px">Booking Confirmed! 🎉</h2>
@@ -29,16 +36,13 @@ async function sendTicketEmail(to, ticketCode, eventTitle, tierName, quantity, e
                     <table style="border-collapse:collapse;width:100%;margin-top:16px">
                         <tr><td style="padding:8px 0;color:#888;width:120px">Event</td><td style="padding:8px 0;font-weight:600">${eventTitle}</td></tr>
                         <tr><td style="padding:8px 0;color:#888">Tier</td><td style="padding:8px 0">${tierName}</td></tr>
-                        <tr><td style="padding:8px 0;color:#888">Quantity</td><td style="padding:8px 0">${quantity}</td></tr>
+                        <tr><td style="padding:8px 0;color:#888">Quantity</td><td style="padding:8px 0">${tickets.length}</td></tr>
                         <tr><td style="padding:8px 0;color:#888">Date</td><td style="padding:8px 0">${eventDate || 'TBA'}</td></tr>
                         <tr><td style="padding:8px 0;color:#888">Venue</td><td style="padding:8px 0">${venue || 'TBA'}</td></tr>
                     </table>
-                    <div style="margin-top:20px;background:#f0f9ff;border-radius:10px;padding:16px;text-align:center">
-                        <p style="margin:0;color:#555;font-size:13px">Your ticket code</p>
-                        <p style="margin:8px 0 0;font-size:22px;font-weight:700;letter-spacing:2px;color:#0CA6EF">${ticketCode}</p>
-                    </div>
-                    <p style="margin-top:20px;color:#555;font-size:13px">Present this code or your QR code at the event entrance.</p>
-                    <p style="color:#555;font-size:13px">See you there! — The Kulunu Team</p>
+                    <p style="margin-top:20px;color:#555;font-size:13px">Your ticket code${tickets.length > 1 ? 's' : ''} — each must be presented separately at the entrance:</p>
+                    ${codesHtml}
+                    <p style="margin-top:20px;color:#555;font-size:13px">See you there! — The Kulunu Team</p>
                 </div>
             `,
         });
@@ -112,6 +116,7 @@ app.post('/tickets/purchase', async (req, res) => {
         const {
             tier_id, event_id, buyer_name, buyer_email,
             buyer_phone, payment_method, quantity = 1,
+            attendees = [],
         } = req.body;
 
         if (!tier_id || !event_id || !buyer_name || !buyer_email) {
@@ -144,34 +149,48 @@ app.post('/tickets/purchase', async (req, res) => {
             });
         }
 
-        const ticketCode  = 'KLN-' + randomUUID().replace(/-/g, '').substring(0, 10).toUpperCase();
-        const qrData      = `KULUNU-TICKET|${ticketCode}|${event_id}|${tier.name}|${buyer_email}`;
-        const totalPrice  = parseFloat(tier.price) * parseInt(quantity);
+        const qty        = parseInt(quantity);
+        const unitPrice  = parseFloat(tier.price);
 
-        const [result] = await db.query(
-            `INSERT INTO ticket_sales
-             (tier_id, event_id, ticket_code, buyer_name, buyer_email, buyer_phone,
-              quantity, total_price, payment_method, payment_status, qr_data)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
-            [tier_id, event_id, ticketCode, buyer_name, buyer_email,
-             buyer_phone || null, parseInt(quantity), totalPrice,
-             payment_method || null, qrData]
+        const insertedIds = [];
+        for (let i = 0; i < qty; i++) {
+            const attendee     = attendees[i];
+            const attendeeName  = attendee?.name?.trim()  || buyer_name;
+            const attendeeEmail = attendee?.email?.trim() || buyer_email;
+
+            const ticketCode = 'KLN-' + randomUUID().replace(/-/g, '').substring(0, 10).toUpperCase();
+            const qrData     = `KULUNU-TICKET|${ticketCode}|${event_id}|${tier.name}|${attendeeEmail}`;
+
+            const [result] = await db.query(
+                `INSERT INTO ticket_sales
+                 (tier_id, event_id, ticket_code, buyer_name, buyer_email, buyer_phone,
+                  quantity, total_price, payment_method, payment_status, qr_data)
+                 VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, 0, ?)`,
+                [tier_id, event_id, ticketCode, attendeeName, attendeeEmail,
+                 buyer_phone || null, unitPrice, payment_method || null, qrData]
+            );
+            insertedIds.push(result.insertId);
+        }
+
+        await db.query('UPDATE ticket_tiers SET sold = sold + ? WHERE id = ?', [qty, tier_id]);
+
+        const [tickets] = await db.query(
+            `SELECT * FROM ticket_sales WHERE id IN (${insertedIds.map(() => '?').join(',')})`,
+            insertedIds
         );
 
-        await db.query('UPDATE ticket_tiers SET sold = sold + ? WHERE id = ?', [parseInt(quantity), tier_id]);
-
-        const [rows] = await db.query('SELECT * FROM ticket_sales WHERE id = ?', [result.insertId]);
+        const ticketCodes = tickets.map(t => t.ticket_code);
+        const emailTickets = tickets.map(t => ({ code: t.ticket_code, name: t.buyer_name }));
 
         // Non-blocking — purchase succeeds regardless of email
-        sendTicketEmail(buyer_email, ticketCode, event.title, tier.name, quantity, event.date, event.venue);
+        sendTicketEmail(buyer_email, emailTickets, event.title, tier.name, event.date, event.venue);
 
         return res.status(200).json({
             success: true,
             data: {
-                ticket_code:    ticketCode,
-                qr_data:        qrData,
+                tickets,
+                ticket_codes:   ticketCodes,
                 payment_status: false,
-                ticket:         rows[0],
             },
         });
     } catch (err) {
