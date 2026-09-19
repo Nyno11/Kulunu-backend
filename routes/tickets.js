@@ -51,6 +51,7 @@ async function sendTicketEmail(to, tickets, eventTitle, tierName, eventDate, ven
     }
 }
 
+
 // ─── Ensure DB tables exist on startup ─────────────────────────────────────
 async function ensureTables() {
     await db.query(`
@@ -157,6 +158,7 @@ app.post('/tickets/purchase', async (req, res) => {
             const attendee     = attendees[i];
             const attendeeName  = attendee?.name?.trim()  || buyer_name;
             const attendeeEmail = attendee?.email?.trim() || buyer_email;
+            const attendeePhone = attendee?.phone?.trim() || buyer_phone;
 
             const ticketCode = 'KLN-' + randomUUID().replace(/-/g, '').substring(0, 10).toUpperCase();
             const qrData     = `KULUNU-TICKET|${ticketCode}|${event_id}|${tier.name}|${attendeeEmail}`;
@@ -167,7 +169,7 @@ app.post('/tickets/purchase', async (req, res) => {
                   quantity, total_price, payment_method, payment_status, qr_data)
                  VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, 0, ?)`,
                 [tier_id, event_id, ticketCode, attendeeName, attendeeEmail,
-                 buyer_phone || null, unitPrice, payment_method || null, qrData]
+                 attendeePhone || null, unitPrice, payment_method || null, qrData]
             );
             insertedIds.push(result.insertId);
         }
@@ -334,6 +336,94 @@ app.get('/admin/events/:id/sold-tickets', jwthelper.verifyAccessToken, async (re
     }
 });
 
+// GET /events/:id/attendees — authenticated, owner only
+app.get('/events/:id/attendees', jwthelper.verifyAccessToken, async (req, res) => {
+    try {
+        const id_user  = req.payload.aud;
+        const event_id = req.params.id;
+
+        // Verify the event belongs to this organizer
+        const [events] = await db.query(
+            'SELECT id_event FROM events WHERE id_event = ? AND id_user = ?',
+            [event_id, id_user]
+        );
+        if (!events[0]) {
+            return res.status(403).json({ success: false, message: 'Event not found or not authorised' });
+        }
+
+        const [rows] = await db.query(
+            `SELECT
+                ts.id,
+                ts.ticket_code,
+                ts.buyer_name,
+                ts.buyer_email,
+                ts.buyer_phone,
+                ts.total_price,
+                ts.payment_status,
+                ts.check_in_status,
+                ts.purchased_at,
+                tt.name  AS tier_name,
+                tt.price AS tier_price
+             FROM ticket_sales ts
+             JOIN ticket_tiers tt ON ts.tier_id = tt.id
+             WHERE ts.event_id = ?
+             ORDER BY ts.purchased_at DESC`,
+            [event_id]
+        );
+
+        return res.status(200).json({ success: true, data: rows, total: rows.length });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// GET /my-tickets — returns all tickets purchased by the logged-in user
+app.get('/my-tickets', jwthelper.verifyAccessToken, async (req, res) => {
+    try {
+        const id_user = req.payload.aud;
+
+        // Resolve the user's email so we can match against buyer_email in ticket_sales
+        const [users] = await db.query('SELECT email FROM users WHERE id_user = ?', [id_user]);
+        if (!users[0]) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const email = users[0].email;
+
+        const [rows] = await db.query(
+            `SELECT
+                ts.id,
+                ts.ticket_code,
+                ts.buyer_name,
+                ts.buyer_email,
+                ts.total_price,
+                ts.payment_status,
+                ts.check_in_status,
+                ts.qr_data,
+                ts.purchased_at,
+                tt.name        AS tier_name,
+                tt.price       AS tier_price,
+                e.id_event     AS event_id,
+                e.title        AS event_title,
+                e.date         AS event_date,
+                e.time         AS event_time,
+                e.venue        AS event_venue,
+                e.banner_url   AS event_banner,
+                e.status       AS event_status
+             FROM ticket_sales ts
+             JOIN ticket_tiers tt ON ts.tier_id  = tt.id
+             JOIN events e        ON ts.event_id = e.id_event
+             WHERE ts.buyer_email = ?
+             ORDER BY ts.purchased_at DESC`,
+            [email]
+        );
+
+        return res.status(200).json({ success: true, data: rows });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // POST /admin/tickets/:id/check-in
 app.post('/admin/tickets/:id/check-in', jwthelper.verifyAccessToken, async (req, res) => {
     try {
@@ -346,6 +436,116 @@ app.post('/admin/tickets/:id/check-in', jwthelper.verifyAccessToken, async (req,
 
         await db.query('UPDATE ticket_sales SET check_in_status = 1 WHERE id = ?', [req.params.id]);
         return res.status(200).json({ success: true, message: 'Ticket checked in successfully' });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// GET /tickets/resolve/:code — public, no auth
+// Resolves a ticket_code to its event, so a scan link can redirect a
+// non-organiser (or logged-out) viewer straight to the public event page.
+app.get('/tickets/resolve/:code', async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            `SELECT e.id_event AS event_id
+             FROM ticket_sales ts
+             JOIN events e ON e.id_event = ts.event_id
+             WHERE ts.ticket_code = ?`,
+            [req.params.code]
+        );
+        if (!rows[0]) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+        return res.status(200).json({ success: true, data: { event_id: rows[0].event_id } });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// POST /tickets/checkin-by-code — Auth required, event-owner (or platform admin) only
+// Body: { ticket_code: 'KLN-XXXX' }
+// Resolves the QR ticket_code to a DB row and checks in atomically.
+// Returns ticket info regardless of check-in state so the UI can display it.
+app.post('/tickets/checkin-by-code', jwthelper.verifyAccessToken, async (req, res) => {
+    try {
+        const { ticket_code } = req.body;
+        if (!ticket_code) {
+            return res.status(400).json({ success: false, message: 'ticket_code is required' });
+        }
+
+        const [rows] = await db.query(
+            `SELECT
+                ts.id,
+                ts.ticket_code,
+                ts.buyer_name,
+                ts.check_in_status,
+                ts.payment_status,
+                ts.purchased_at,
+                tt.name     AS tier_name,
+                e.id_event  AS event_id,
+                e.id_user   AS event_owner_id,
+                e.title     AS event_title,
+                e.date      AS event_date,
+                e.venue     AS event_venue
+             FROM ticket_sales ts
+             JOIN ticket_tiers tt ON tt.id  = ts.tier_id
+             JOIN events       e  ON e.id_event = ts.event_id
+             WHERE ts.ticket_code = ?`,
+            [ticket_code]
+        );
+
+        if (!rows[0]) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+
+        const t = rows[0];
+
+        const id_user = req.payload.aud;
+        const isOwner = String(t.event_owner_id) === String(id_user);
+        if (!isOwner) {
+            const [[requester]] = await db.query('SELECT role FROM users WHERE id_user = ?', [id_user]);
+            if (requester?.role !== 'admin') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'You are not authorised to check in tickets for this event',
+                    event_id: t.event_id,
+                });
+            }
+        }
+
+        const payload = {
+            id:                t.id,
+            ticket_code:       t.ticket_code,
+            buyer_name:        t.buyer_name,
+            tier_name:         t.tier_name,
+            event_title:       t.event_title,
+            event_date:        t.event_date,
+            event_venue:       t.event_venue,
+            payment_status:    !!t.payment_status,
+            check_in_status:   true,
+        };
+
+        if (t.check_in_status) {
+            return res.status(200).json({
+                success:           true,
+                already_checked_in: true,
+                data:              payload,
+            });
+        }
+
+        await db.query(
+            'UPDATE ticket_sales SET check_in_status = 1 WHERE id = ?',
+            [t.id]
+        );
+
+        return res.status(200).json({
+            success:           true,
+            already_checked_in: false,
+            data:              payload,
+        });
+
     } catch (err) {
         console.error(err);
         return res.status(500).json({ success: false, message: 'Server error' });

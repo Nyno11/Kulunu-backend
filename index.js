@@ -84,6 +84,10 @@ var app = express();
 app.use(cors());
 app.use(express.json({ strict: false, limit: '20mb' }));
 
+// Serve uploaded banner images as static files
+const path = require('path');
+app.use('/uploads', require('express').static(path.join(__dirname, 'public/uploads')));
+
 
 app.post('/test', (req, res) => {
   res.json({ success: true });
@@ -105,8 +109,8 @@ const paymentRoutes = require('./routes/payment.js');
 const adminRoutes = require('./routes/admin.js');
 const eventRoutes = require('./routes/event.js');
 const ticketRoutes = require('./routes/tickets.js');
+app.use('/auth', authRoutes);
 app.use('/', [
-  authRoutes,
   flightsRoutes,
   bookingsRoutes,
   paymentRoutes,

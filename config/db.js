@@ -17,7 +17,7 @@ const mysql2 = require('mysql2/promise');
 
 // Create the connection pool. The pool-specific settings are the defaults
 const pool = mysql2.createPool({
-    host: 'localhost',
+    host: '127.0.0.1',
     user: 'root',
     password: "",
     database: 'kulunu',

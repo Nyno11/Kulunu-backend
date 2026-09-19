@@ -259,7 +259,7 @@ app.post('/login', async (req, res) => {
 
 
 
-app.post('/register', async (req, res) => {
+app.post('/signup', async (req, res) => {
 
 
     // Validation of authentication using Joi Library
