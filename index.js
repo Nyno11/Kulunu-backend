@@ -13,7 +13,7 @@ const dotenv = require('dotenv');
 const env = "development";
 
 
-// dotenv.config({ path: `.env.${env}` })
+dotenv.config({ path: `.env.${env}` });
 
 var port = process.env.PORT || 8080;
 

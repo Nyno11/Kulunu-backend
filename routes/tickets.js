@@ -2,53 +2,29 @@ const express = require('express');
 const app = express.Router();
 const db = require('../config/db.js');
 const jwthelper = require('../utils/jwt_helper.js');
-const nodemailer = require('nodemailer');
+const mailer = require('../config/mailer.js');
 const { randomUUID } = require('crypto');
 
-// ─── Email transporter ─────────────────────────────────────────────────────
-const mailer = nodemailer.createTransport({
-    host: process.env.MAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.MAIL_PORT || '587'),
-    secure: process.env.MAIL_SECURE === 'true',
-    auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
-    },
-});
-
 async function sendTicketEmail(to, tickets, eventTitle, tierName, eventDate, venue) {
-    try {
-        const codesHtml = tickets.map(({ code, name }) => `
-            <div style="margin-top:12px;background:#f0f9ff;border-radius:10px;padding:14px;text-align:center">
-                <p style="margin:0;color:#555;font-size:12px">${name}</p>
-                <p style="margin:6px 0 0;font-size:20px;font-weight:700;letter-spacing:2px;color:#0CA6EF">${code}</p>
-            </div>
-        `).join('');
+    const codesText = tickets.map(({ code, name }) =>
+        `<strong>${name}</strong> — ${code}`
+    ).join('<br>');
 
-        await mailer.sendMail({
-            from: process.env.MAIL_FROM || process.env.MAIL_USER,
-            to,
-            subject: `Your ${tickets.length > 1 ? tickets.length + ' tickets' : 'ticket'} for ${eventTitle}`,
-            html: `
-                <div style="font-family:'Segoe UI',sans-serif;max-width:560px;margin:auto;padding:32px;border-radius:12px;border:1px solid #e5e7eb">
-                    <h2 style="color:#0b2030;margin-bottom:4px">Booking Confirmed! 🎉</h2>
-                    <p style="color:#555">Thank you for your purchase. Here are your ticket details:</p>
-                    <table style="border-collapse:collapse;width:100%;margin-top:16px">
-                        <tr><td style="padding:8px 0;color:#888;width:120px">Event</td><td style="padding:8px 0;font-weight:600">${eventTitle}</td></tr>
-                        <tr><td style="padding:8px 0;color:#888">Tier</td><td style="padding:8px 0">${tierName}</td></tr>
-                        <tr><td style="padding:8px 0;color:#888">Quantity</td><td style="padding:8px 0">${tickets.length}</td></tr>
-                        <tr><td style="padding:8px 0;color:#888">Date</td><td style="padding:8px 0">${eventDate || 'TBA'}</td></tr>
-                        <tr><td style="padding:8px 0;color:#888">Venue</td><td style="padding:8px 0">${venue || 'TBA'}</td></tr>
-                    </table>
-                    <p style="margin-top:20px;color:#555;font-size:13px">Your ticket code${tickets.length > 1 ? 's' : ''} — each must be presented separately at the entrance:</p>
-                    ${codesHtml}
-                    <p style="margin-top:20px;color:#555;font-size:13px">See you there! — The Kulunu Team</p>
-                </div>
-            `,
-        });
-    } catch (err) {
-        console.error('[Ticket Email] Failed to send to', to, ':', err.message);
-    }
+    const body = `
+        You have purchased ${tickets.length} ticket${tickets.length > 1 ? 's' : ''} for <strong>${eventTitle}</strong>.<br><br>
+        <strong>Tier:</strong> ${tierName}<br>
+        <strong>Date:</strong> ${eventDate || 'TBA'}<br>
+        <strong>Venue:</strong> ${venue || 'TBA'}<br><br>
+        Your ticket code${tickets.length > 1 ? 's' : ''} (present each separately at the entrance):<br><br>
+        ${codesText}
+    `;
+
+    await mailer.sendEmailtoUser(
+        to,
+        `Your ${tickets.length > 1 ? tickets.length + ' tickets' : 'ticket'} for ${eventTitle}`,
+        'Booking Confirmed',
+        body
+    );
 }
 
 
@@ -76,6 +52,7 @@ async function ensureTables() {
             buyer_name      VARCHAR(200) NOT NULL,
             buyer_email     VARCHAR(200) NOT NULL,
             buyer_phone     VARCHAR(50),
+            purchased_by    INT NULL,
             quantity        INT NOT NULL DEFAULT 1,
             total_price     DECIMAL(10,2) NOT NULL DEFAULT 0,
             payment_method  VARCHAR(50),
@@ -85,6 +62,25 @@ async function ensureTables() {
             purchased_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     `);
+
+    // purchased_by — the account that bought the ticket, distinct from buyer_name/
+    // buyer_email/buyer_phone which now identify the individual attendee that
+    // specific ticket is for. Older rows won't have this column yet.
+    try {
+        await db.query('ALTER TABLE ticket_sales ADD COLUMN purchased_by INT NULL');
+    } catch (err) {
+        if (!/duplicate column/i.test(err.message)) throw err;
+    }
+
+    // One-time backfill for tickets bought before purchased_by existed: best
+    // guess is whoever's account email matches the row's buyer_email.
+    await db.query(`
+        UPDATE ticket_sales ts
+        JOIN users u ON u.email = ts.buyer_email
+        SET ts.purchased_by = u.id_user
+        WHERE ts.purchased_by IS NULL
+    `);
+
     console.log('[Tickets] Tables ready');
 }
 ensureTables().catch(err => console.error('[Tickets] ensureTables failed:', err.message));
@@ -111,14 +107,15 @@ app.get('/events/:id/tickets', async (req, res) => {
     }
 });
 
-// POST /tickets/purchase
-app.post('/tickets/purchase', async (req, res) => {
+// POST /tickets/purchase — authenticated (a ticket must belong to an account to show up in My Tickets)
+app.post('/tickets/purchase', jwthelper.verifyAccessToken, async (req, res) => {
     try {
         const {
             tier_id, event_id, buyer_name, buyer_email,
             buyer_phone, payment_method, quantity = 1,
             attendees = [],
         } = req.body;
+        const purchasedBy = req.payload.aud;
 
         if (!tier_id || !event_id || !buyer_name || !buyer_email) {
             return res.status(400).json({
@@ -165,11 +162,11 @@ app.post('/tickets/purchase', async (req, res) => {
 
             const [result] = await db.query(
                 `INSERT INTO ticket_sales
-                 (tier_id, event_id, ticket_code, buyer_name, buyer_email, buyer_phone,
+                 (tier_id, event_id, ticket_code, buyer_name, buyer_email, buyer_phone, purchased_by,
                   quantity, total_price, payment_method, payment_status, qr_data)
-                 VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, 0, ?)`,
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 0, ?)`,
                 [tier_id, event_id, ticketCode, attendeeName, attendeeEmail,
-                 attendeePhone || null, unitPrice, payment_method || null, qrData]
+                 attendeePhone || null, purchasedBy, unitPrice, payment_method || null, qrData]
             );
             insertedIds.push(result.insertId);
         }
@@ -182,10 +179,19 @@ app.post('/tickets/purchase', async (req, res) => {
         );
 
         const ticketCodes = tickets.map(t => t.ticket_code);
-        const emailTickets = tickets.map(t => ({ code: t.ticket_code, name: t.buyer_name }));
 
-        // Non-blocking — purchase succeeds regardless of email
-        sendTicketEmail(buyer_email, emailTickets, event.title, tier.name, event.date, event.venue);
+        // Each attendee gets only their own ticket(s), sent to their own email —
+        // not everything bundled to the purchaser. Non-blocking — purchase
+        // succeeds regardless of email delivery.
+        const byEmail = new Map();
+        for (const t of tickets) {
+            const list = byEmail.get(t.buyer_email) || [];
+            list.push({ code: t.ticket_code, name: t.buyer_name });
+            byEmail.set(t.buyer_email, list);
+        }
+        for (const [email, emailTickets] of byEmail) {
+            sendTicketEmail(email, emailTickets, event.title, tier.name, event.date, event.venue);
+        }
 
         return res.status(200).json({
             success: true,
@@ -383,12 +389,6 @@ app.get('/my-tickets', jwthelper.verifyAccessToken, async (req, res) => {
     try {
         const id_user = req.payload.aud;
 
-        // Resolve the user's email so we can match against buyer_email in ticket_sales
-        const [users] = await db.query('SELECT email FROM users WHERE id_user = ?', [id_user]);
-        if (!users[0]) return res.status(404).json({ success: false, message: 'User not found' });
-
-        const email = users[0].email;
-
         const [rows] = await db.query(
             `SELECT
                 ts.id,
@@ -412,9 +412,9 @@ app.get('/my-tickets', jwthelper.verifyAccessToken, async (req, res) => {
              FROM ticket_sales ts
              JOIN ticket_tiers tt ON ts.tier_id  = tt.id
              JOIN events e        ON ts.event_id = e.id_event
-             WHERE ts.buyer_email = ?
+             WHERE ts.purchased_by = ?
              ORDER BY ts.purchased_at DESC`,
-            [email]
+            [id_user]
         );
 
         return res.status(200).json({ success: true, data: rows });
